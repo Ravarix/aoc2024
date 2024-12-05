@@ -12,12 +12,11 @@ import (
 func Run() {
 	rules, lines := parseFile()
 
-	goodLines := make(map[int]struct{})
-	badLines := make(map[int]struct{})
+	goodLines, badLines := make(map[int]struct{}), make(map[int]struct{})
 	for i, line := range lines {
 		goodLine := true
 		for j := range line.arr {
-			if !checkRules(line, j, rules) {
+			if !checkRules(line, j, rules, false) {
 				goodLine = false
 				break
 			}
@@ -40,8 +39,7 @@ func Run() {
 	sum = 0
 	for lineIdx := range badLines {
 		for j := range lines[lineIdx].arr {
-			for !checkRules(lines[lineIdx], j, rules) { // keep using rule replace until success
-				checkAndFix(lines[lineIdx], j, rules)
+			for !checkRules(lines[lineIdx], j, rules, true) { // keep using rule replace until success
 			}
 		}
 		middleIdx := (len(lines[lineIdx].arr) - 1) / 2
@@ -50,31 +48,23 @@ func Run() {
 	fmt.Printf("The sum of all fixed lines is %v\n", sum)
 }
 
-func checkRules(line lineData, idx int, rules map[int][]int) bool {
+func checkRules(line lineData, idx int, rules map[int][]int, fix bool) bool {
 	num := line.arr[idx]
 	if befores, exists := rules[num]; exists { //do i have a rule with this number as an 'after'?
 		for _, before := range befores {
+			// does this 'before' exist in the line & have a greater loc than our current idx
 			if beforeLoc, ok := line.locs[before]; ok && beforeLoc > idx {
-				return false // does this 'before' exist in the line & have a greater loc than our current idx
+				if fix {
+					line.arr[idx] = before // swappy
+					line.arr[beforeLoc] = num
+					line.locs[before] = idx
+					line.locs[num] = beforeLoc
+				}
+				return false // still return false, can't guarantee only 1 swap needed
 			}
 		}
 	}
 	return true
-}
-
-func checkAndFix(line lineData, idx int, rules map[int][]int) {
-	num := line.arr[idx]
-	if befores, exists := rules[num]; exists {
-		for _, before := range befores {
-			if beforeLoc, ok := line.locs[before]; ok && beforeLoc > idx {
-				line.arr[idx] = before //swappy
-				line.arr[beforeLoc] = num
-				line.locs[before] = idx
-				line.locs[num] = beforeLoc
-				return
-			}
-		}
-	}
 }
 
 type lineData struct {
